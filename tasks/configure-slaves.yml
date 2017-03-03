@@ -1,10 +1,21 @@
 # file: tasks/configure-slaves.yml -- postgresql pre-start configuration of the slave servers and startup
 
+- name: "Stage 3: Create postgresql directory"
+  file:
+    path: "{{ postgresql_dir }}"
+    state: directory
+    owner: "{{ postgresql_admin_user }}"
+    group: "{{ postgresql_admin_user }}"
+    mode: 0700
+
 - name: "Stage 3: stop old postgresql service"
   service: name="{{ postgresql_service_name }}" state=stopped
 
 - name: "Stage 3: remove old postgresql cluster"
-  file: path="{{ postgresql_data_dir }}" state=absent
+  file: path="{{ postgresql_data_dir }}" state=absent  
+
+- name: "Stage 3: remove old postgresql cluster"
+  file: path="{{ postgresql_cluster_symlink_src }}" state=absent  
 
 - name: "Stage 3: cluster directory replacement with symlink, check destination directory"
   file:
@@ -36,6 +47,7 @@
     mode: 0600
 
 - name: "Stage 3: initialize new postgresql cluster"
+  become: true
   command: "sudo -u postgres pg_basebackup -c fast -X stream -h {{ postgresql_streaming_master }} -U {{ postgresql_streaming_user.name }} -D {{ postgresql_data_dir }}"
 
 - name: "Stage 3: configure pg_hba.conf"

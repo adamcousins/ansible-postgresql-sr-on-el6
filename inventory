@@ -1,7 +1,11 @@
-# file: inventory -- exmaple inventory file.
+#Inventory file must contain groups to master and slave.
+#Example below
+
+postgres2 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2200 ansible_ssh_user='ansible' ansible_ssh_private_key_file='keys/id_rsa'
+postgres1 ansible_ssh_host=127.0.0.1 ansible_ssh_port=2222 ansible_ssh_user='ansible' ansible_ssh_private_key_file='keys/id_rsa'
 
 [streaming-master]
-vm12-centos7-pgdb      ansible_ssh_host=192.168.122.12 ansible_ssh_user=lesovsky
+postgres1
 
 [streaming-slaves]
-vm13-centos7-pgdb ansible_ssh_host=192.168.122.13 ansible_ssh_user=lesovsky
+postgres2

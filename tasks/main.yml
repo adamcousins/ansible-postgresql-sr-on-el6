@@ -1,0 +1,18 @@
+#Include non-overwritable vars
+- include_vars: file=../defaults/repo.yml
+- include_vars: file=../group_vars/os_{{ ansible_os_family }}.yml
+
+#Include tasks
+- include: 'install.yml'
+
+- include: "{{task_items}}"
+  when: inventory_hostname in groups['streaming-master']|default([])
+  with_items:
+  - 'configure-master.yml'
+  - 'users.yml'
+  - 'databases.yml'
+  loop_control:
+    loop_var: task_items
+
+- include: 'configure-slaves.yml'
+  when: inventory_hostname in groups['streaming-slaves']|default([])

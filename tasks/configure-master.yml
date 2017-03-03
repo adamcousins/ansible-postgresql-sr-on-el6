@@ -1,12 +1,13 @@
 # file: tasks/configure-master.yml -- postgresql pre-start configuration of master server and startup
 
-- name: "Stage 2: stop old postgresql service"
-  service: name="{{ postgresql_service_name }}" state=stopped
-  when: postgresql_drop_old_cluster
+- name: "Stage 2: Create postgresql directory"
+  file:
+    path: "{{ postgresql_dir }}"
+    state: directory
+    owner: "{{ postgresql_admin_user }}"
+    group: "{{ postgresql_admin_user }}"
+    mode: 0700
 
-- name: "Stage 2: remove old postgresql cluster"
-  file: path="{{ postgresql_data_dir }}" state=absent
-  when: postgresql_drop_old_cluster
 
 - name: "Stage 2: cluster directory replacement with symlink, check destination directory"
   file:
@@ -26,15 +27,35 @@
     group: "{{ postgresql_admin_user }}"
   when: postgresql_cluster_symlink_src|length > 0
 
+- name: "Stage 2: stop old postgresql service"
+  service: name="{{ postgresql_service_name }}" state=stopped
+  when: postgresql_drop_old_cluster
+
+- name: "Stage 2: remove old postgresql cluster"
+  file: path="{{ postgresql_cluster_symlink_src }}" state=absent
+  when: postgresql_drop_old_cluster
+
 - name: "Stage 2: check cluster directory"
-  stat: path={{ postgresql_data_dir }}
+  stat: path={{ postgresql_cluster_symlink_src }}
   register: postgresql_data_stat
 
 - name: "Stage 2: initialize new postgresql cluster"
   sudo: yes
   sudo_user: "{{ postgresql_admin_user }}"
-  command: "{{ postgresql_exec_dir }}/initdb -D {{ postgresql_data_dir }}"
+  command: "{{ postgresql_exec_dir }}/initdb -D {{ postgresql_cluster_symlink_src }}"
   when: postgresql_data_stat.stat.exists == False
+
+- name: "Stage 2: configure postgresql.conf"
+  lineinfile:
+    dest: "{{ postgresql_conf_dir }}/postgresql.conf"
+    create: yes
+    state: present
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.guc }}"
+    owner: "{{ postgresql_admin_user }}"
+    group: "{{ postgresql_admin_user }}"
+    mode: 0640
+  with_items: "{{ postgresql_conf_default_guc }}"
 
 - name: "Stage 2: configure pg_hba.conf"
   template:
@@ -43,14 +64,6 @@
     owner: "{{ postgresql_admin_user }}"
     group: "{{ postgresql_admin_user }}"
     mode: 0640
-
-- name: "Stage 2: configure postgresql.conf"
-  lineinfile:
-    dest: "{{ postgresql_conf_dir }}/postgresql.conf"
-    state: present
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.guc }}"
-  with_items: "{{ postgresql_conf_default_guc }}"
 
 - name: "Stage 2: create postgresql log directory"
   file:
